@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Screen Audio Recorder</title>
+  <style>
+    :root {
+      --bg: #0f1724;
+      --card: #0b1220;
+      --accent: #06b6d4;
+      --muted: #94a3b8;
+      --glass: rgba(255, 255, 255, 0.05);
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: Inter, system-ui, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(180deg, #071124 0%, #051027 100%);
+      color: #e6eef6;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--card);
+      padding: 28px 24px;
+      border-radius: 16px;
+      box-shadow: 0 8px 40px rgba(2, 6, 23, 0.6);
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 10px;
+      font-size: 22px;
+    }
+    p {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .controls {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    button {
+      background: var(--glass);
+      color: #e6eef6;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 12px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 15px;
+      transition: all 0.2s ease;
+      flex: 1;
+      max-width: 150px;
+    }
+    button:hover { background: rgba(255, 255, 255, 0.08); }
+    button.primary {
+      background: linear-gradient(90deg, #06b6d4, #0ea5e9);
+      color: #042025;
+      border: none;
+    }
+    .meta {
+      margin: 18px 0;
+      font-size: 15px;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: left;
+      background: rgba(255,255,255,0.02);
+      padding: 12px 14px;
+      border-radius: 8px;
+    }
+    #downloads {
+      margin-top: 16px;
+      text-align: left;
+    }
+    a.download {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(6, 182, 212, 0.12);
+      text-decoration: none;
+      color: var(--accent);
+      border: 1px solid rgba(6, 182, 212, 0.2);
+      transition: background 0.2s ease;
+    }
+    a.download:hover { background: rgba(6,182,212,0.2); }
+    audio {
+      margin-top: 10px;
+      width: 100%;
+      border-radius: 8px;
+      outline: none;
+    }
+    .upload-section {
+      margin-top: 15px;
+      text-align: center;
+    }
+    .progress-bar {
+      width: 100%;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      overflow: hidden;
+      height: 8px;
+      margin-top: 10px;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width 0.2s;
+    }
+    #uploadStatus { color: var(--muted); font-size: 14px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Screen Audio Recorder</h1>
+    <p>Record your screen or Chrome tab with audio. When selecting a tab, check “Share audio.”</p>
+
+    <div class="controls">
+      <button id="startBtn" class="primary">Start</button>
+      <button id="stopBtn" disabled>Stop</button>
+    </div>
+
+    <div class="meta">
+      <div><strong>Status:</strong> <span id="state">Idle</span></div>
+      <div><strong>Duration:</strong> <span id="timer">00:00</span></div>
+      <div><strong>Size:</strong> <span id="size">0 MB</span></div>
+    </div>
+
+    <div id="downloads"></div>
+  </div>
+
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const stateEl = document.getElementById('state');
+    const timerEl = document.getElementById('timer');
+    const sizeEl = document.getElementById('size');
+    const downloadsEl = document.getElementById('downloads');
+
+    let recorder, recordedChunks = [], startTime = null, timerInterval = null, currentStream = null, latestBlob = null;
+
+    function fmtTime(ms){
+      if(!ms) return '00:00';
+      const s = Math.floor(ms/1000);
+      const m = Math.floor(s/60).toString().padStart(2,'0');
+      const ss = (s%60).toString().padStart(2,'0');
+      return `${m}:${ss}`;
+    }
+    function fmtBytes(bytes){
+      if(!bytes) return '0 MB';
+      const mb = bytes / (1024*1024);
+      return mb.toFixed(2) + ' MB';
+    }
+    function updateTimer(){
+      const elapsed = Date.now() - startTime;
+      timerEl.textContent = fmtTime(elapsed);
+      const size = recordedChunks.reduce((sum, c) => sum + c.size, 0);
+      sizeEl.textContent = fmtBytes(size);
+    }
+
+    async function startRecording(){
+      try{
+        startBtn.disabled = true;
+        stateEl.textContent = 'Requesting permission...';
+
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({ video:true, audio:true });
+        if(!displayStream) throw new Error('No stream available');
+
+        currentStream = displayStream;
+        recordedChunks = [];
+
+        const options = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? { mimeType:'video/webm;codecs=vp9,opus' } : {};
+        recorder = new MediaRecorder(displayStream, options);
+
+        recorder.ondataavailable = e => { if(e.data && e.data.size>0) recordedChunks.push(e.data); };
+        recorder.onstart = () => {
+          startTime = Date.now();
+          timerInterval = setInterval(updateTimer, 250);
+          stateEl.textContent = 'Recording...';
+          stopBtn.disabled = false;
+        };
+        recorder.onstop = () => {
+          clearInterval(timerInterval);
+          updateTimer();
+          stateEl.textContent = 'Stopped';
+          stopBtn.disabled = true;
+          startBtn.disabled = false;
+
+          latestBlob = new Blob(recordedChunks, { type: recorder.mimeType || 'video/webm' });
+          const url = URL.createObjectURL(latestBlob);
+          const ts = new Date().toISOString().replace(/[:.]/g,'-');
+          const filename = `recording-${ts}.webm`;
+
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          a.textContent = `Download ${filename} (${fmtBytes(latestBlob.size)})`;
+          a.className = 'download';
+
+          const audioEl = document.createElement('audio');
+          audioEl.controls = true;
+          audioEl.src = url;
+
+          const uploadDiv = document.createElement('div');
+          uploadDiv.className = 'upload-section';
+          const uploadBtn = document.createElement('button');
+          uploadBtn.textContent = 'Start Processing';
+          uploadBtn.className = 'primary';
+
+          const progressBar = document.createElement('div');
+          progressBar.className = 'progress-bar';
+          const fill = document.createElement('div');
+          fill.className = 'progress-fill';
+          progressBar.appendChild(fill);
+
+          const statusText = document.createElement('div');
+          statusText.id = 'uploadStatus';
+
+          uploadDiv.appendChild(uploadBtn);
+          uploadDiv.appendChild(progressBar);
+          uploadDiv.appendChild(statusText);
+
+          uploadsHandler(uploadBtn, fill, statusText);
+
+          downloadsEl.prepend(uploadDiv);
+          downloadsEl.prepend(a);
+          downloadsEl.prepend(audioEl);
+
+          stopAllTracks(currentStream);
+          currentStream = null;
+        };
+
+        recorder.start(1000);
+      }catch(err){
+        alert('Recording failed: '+(err.message||err));
+        stateEl.textContent = 'Error';
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        if(currentStream) stopAllTracks(currentStream);
+      }
+    }
+
+    function uploadsHandler(button, fill, statusText){
+      button.addEventListener('click', async ()=>{
+        if(!latestBlob) return alert('No recording available.');
+        button.disabled = true;
+        statusText.textContent = 'Uploading...';
+        fill.style.width = '0%';
+
+        const formData = new FormData();
+        formData.append('file', latestBlob, 'recording.webm');
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/upload');
+
+        xhr.upload.onprogress = (e)=>{
+          if(e.lengthComputable){
+            const percent = (e.loaded / e.total) * 100;
+            fill.style.width = percent.toFixed(1) + '%';
+          }
+        };
+
+        xhr.onload = ()=>{
+          if(xhr.status === 200){
+            try {
+              const resp = JSON.parse(xhr.responseText);
+              statusText.textContent = resp.status || 'Upload complete';
+            } catch {
+              statusText.textContent = 'Upload complete';
+            }
+          } else {
+            statusText.textContent = 'Upload failed';
+          }
+        };
+
+        xhr.onerror = ()=>{
+          statusText.textContent = 'Upload error';
+        };
+
+        xhr.send(formData);
+      });
+    }
+
+    function stopAllTracks(stream){ if(stream) stream.getTracks().forEach(t=>t.stop()); }
+
+    function stopRecording(){ if(recorder && recorder.state==='recording') recorder.stop(); }
+
+    startBtn.addEventListener('click', startRecording);
+    stopBtn.addEventListener('click', stopRecording);
+
+    if(!navigator.mediaDevices?.getDisplayMedia){
+      startBtn.disabled = true;
+      stateEl.textContent = 'Screen capture not supported in this browser.';
+    }
+  </script>
+</body>
+</html>
