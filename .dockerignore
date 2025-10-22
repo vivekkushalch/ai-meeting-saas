@@ -1,0 +1,7 @@
+.venv
+ai_models_cache
+uploads
+output
+.env
+.env.example
+__pycache__

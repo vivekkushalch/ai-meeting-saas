@@ -40,7 +40,7 @@ class TranscribeAudioConfig:
     # Advanced parameters
     hf_token: Optional[str] = os.getenv("HF_API_KEY")
     model_dir: str = "./ai_models_cache"
-    model_cache_only: bool = True
+    model_cache_only: bool = False
     device_index: int = 0
     align_model: Optional[str] = None
     interpolate_method: str = "nearest"
