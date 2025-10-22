@@ -3,6 +3,9 @@ from datetime import datetime
 from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
 
+import convert
+from llm import llm_process_subs_file
+
 app = Flask(__name__, template_folder='.', static_folder='.')
 
 # Configuration
@@ -13,6 +16,9 @@ MIN_FILE_SIZE = 1 * 1024  # 1KB min file size
 
 # Ensure upload directory exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs('./output', exist_ok=True)
+os.makedirs('./models', exist_ok=True)
+
 
 app.config.update(
     UPLOAD_FOLDER=UPLOAD_FOLDER,
@@ -29,6 +35,11 @@ def allowed_file(filename):
 @app.route('/')
 def home():
     return render_template('index.html')
+
+
+@app.route('/view')
+def view():
+    return render_template('view.html')
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -73,18 +84,30 @@ def upload_file():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         
         # Save the file
+        print("saving file...", filename)
         file.save(filepath)
         
         # Get file info after saving
         file_size_kb = os.path.getsize(filepath) / 1024
-        
+
+        print("transcribing audio...")
+        # transcribe audio
+        vtt_path = convert.transcribe_diarize_audio(filepath)
+
+        print("llm processing...")
+        processed = llm_process_subs_file(vtt_path.replace('uploads', 'output'))
+
+        print("returning response...")
+        # return response
         return jsonify({
             'success': True,
-            'message': 'File uploaded successfully',
+            'message': 'File uploaded and transcribed successfully',
+            'vtt_path': vtt_path,
             'filename': filename,
             'filepath': filepath,
             'size_kb': round(file_size_kb, 2),
-            'file_type': file.content_type
+            'file_type': file.content_type,
+            'llm_processed': processed
         }), 200
         
     except Exception as e:
