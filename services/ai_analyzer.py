@@ -1,10 +1,15 @@
-from google import genai
+import json
 import os
+
+from google import genai
+from google.genai import types
 from pydantic import BaseModel
 from rich import print
-from google.genai import types
-import json
 import json_repair
+
+
+from dotenv import load_dotenv
+load_dotenv()
 
 class MeetingAnalysis(BaseModel):
     meeting_title: str
@@ -26,7 +31,8 @@ def llm_process_subs_file(subs_file_path):
         "meeting_title": title of the meeting that u think will suite the best,
         "meeting_summery":  a good summary of the meeting,
         "meeting_keypoints":  the keypoints and keytakeaways from the meeting,
-        "meeting_todos" : [{todo_title, todo_deadline, todo_priority}] the todos and action items from the meeting,
+        "meeting_todos" : [{todo_title, todo_deadline, todo_
+        priority}] the todos and action items from the meeting,
         "meeting_notes" :  the notes from the meeting,
     }
 

@@ -1,98 +1,156 @@
-# MeetBuddy
+# ai-meeting-saas - AI Meeting Assistant
 
-MeetBuddy is an intelligent meeting assistant that helps you transcribe, analyze, and summarize your meeting recordings. It processes audio files, generates transcripts, and provides AI-powered insights including meeting summaries, key points, and action items.
+ai-meeting-saas is an intelligent meeting assistant that helps you transcribe, analyze, and summarize your meeting recordings. It processes audio files, generates transcripts, and provides AI-powered insights including meeting summaries, key points, and action items.
 
-## Features
+## ✨ Features
 
-- 🎙️ Upload and process audio recordings (supports WAV, MP3, OGG, M4A, WebM)
-- ✍️ Automatic transcription of meeting content
-- 🤖 AI-powered meeting analysis including:
-  - Meeting title generation
-  - Concise meeting summary
-  - Key points and takeaways
-  - Action items with priorities and deadlines
-  - Detailed meeting notes
-- 📱 Responsive web interface
-- ⚡ Fast processing with local transcription models
+- 🎙️ **Audio Processing**
+  - Upload and process audio recordings (WAV, MP3, OGG, M4A, WebM)
+  - Automatic format conversion
+  - Background noise reduction
 
-## Prerequisites
+- 📝 **Transcription**
+  - High-accuracy speech-to-text
+  - Speaker diarization
+  - Timestamped transcripts
+
+- 🤖 **AI Analysis**
+  - Smart meeting title generation
+  - Concise meeting summaries
+  - Key points and action items
+  - Sentiment analysis
+  - Follow-up recommendations
+
+- 🌐 **Web Interface**
+  - Responsive design
+  - Real-time processing status
+  - Downloadable reports
+  - Dark/Light theme
+
+## 🚀 Getting Started
+
+### Prerequisites
 
 - Python 3.8+
-- pip (Python package manager)
+- [uv](https://github.com/astral-sh/uv) (Modern Python package manager)
 - Google Gemini API key (for AI analysis)
 
-## Installation
+### Installation
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
-   cd meetbuddy
+   git clone <repository-url>.git
+   cd ai-meeting-saas
    ```
 
-2. Create and activate a virtual environment:
+2. Copy the example environment file and update with your API key:
    ```bash
-   python -m venv .venv
-   .\.venv\Scripts\activate  # Windows
-   # or
-   source .venv/bin/activate  # Linux/Mac
+   cp .env.example .env
+   # Edit .env with your API key
    ```
 
-3. Install dependencies:
+3. Install dependencies using uv:
    ```bash
-   pip install -r requirements.txt
+   uv sync
    ```
 
-4. Set up environment variables:
-   Create a `.env` file in the project root and add your Google Gemini API key:
-   ```
-   GENAI_API_KEY=your_api_key_here
-   ```
+### Environment Variables
 
-## Usage
+Create a `.env` file with the following variables:
 
-1. Start the application:
+```env
+# Required
+GENAI_API_KEY=your_gemini_api_key
+HF_API_KEY=your_hf_api_key
+```
+
+## 🚦 Usage
+
+1. Start the development server:
    ```bash
-   python main.py
+   uv run app.py
    ```
 
-2. Open your browser and navigate to `http://localhost:5000`
+2. Open your browser and navigate to [http://localhost:8000](http://localhost:8000)
 
-3. Upload your meeting recording file through the web interface
+3. Record your online meeting and upload to the server
 
 4. View the processed results including transcription and AI analysis
 
-## Project Structure
+## 🏗️ Project Structure
 
-- `main.py` - Main Flask application and API endpoints
-- `llm.py` - AI processing using Google's Gemini model
-- `convert.py` - Audio processing and transcription logic
-- `templates/` - HTML templates for the web interface
-- `uploads/` - Directory for uploaded audio files
-- `output/` - Directory for generated output files
+```
+ai-meeting-saas/
+├── .env.example           # Example environment variables
+├── app.py                # Main Flask application
+├── pyproject.toml        # Project metadata and dependencies
+├── services/
+│   ├── __init__.py
+│   ├── audio_transcriber.py  # Audio processing and transcription
+│   └── ai_analyzer.py        # AI-powered meeting analysis
+├── templates/             # HTML templates
+│   ├── index.html
+│   └── view.html
+├── uploads/              # Store uploaded audio files
+└── output/               # Generated transcripts
+```
 
-## Configuration
+## 🛠️ Development
 
-You can modify the following in `main.py`:
-- `ALLOWED_EXTENSIONS` - Supported audio file formats
-- `MAX_FILE_SIZE` - Maximum file size for uploads (default: 100MB)
-- `UPLOAD_FOLDER` - Directory for storing uploaded files
+1. Install development dependencies:
+   ```bash
+   uv pip install -e ".[dev]"
+   ```
 
-## License
+2. Run the development server with auto-reload:
+   ```bash
+   python -m flask --app app.py --debug run
+   ```
+
+3. Run tests:
+   ```bash
+   pytest
+   ```
+
+## ⚙️ Configuration
+
+### Application Settings
+
+You can configure the application by setting environment variables in your `.env` file:
+
+- `DEBUG`: Enable debug mode (default: `False`)
+- `UPLOAD_FOLDER`: Directory for uploaded files (default: `uploads`)
+- `MAX_CONTENT_LENGTH`: Maximum file size in bytes (default: 100MB)
+- `ALLOWED_EXTENSIONS`: Comma-separated list of allowed file extensions (default: `wav,mp3,ogg,m4a,webm`)
+
+### AI Configuration
+
+- `GENAI_API_KEY`: Your Google Gemini API key (required)
+- `MODEL_NAME`: AI model to use (default: `gemini-pro`)
+- `TEMPERATURE`: Controls randomness in AI responses (0.0 to 1.0)
+
+## 📚 Documentation
+
+For detailed documentation, please refer to the [docs](./docs) directory.
+
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Contributing
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these steps:
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## Support
+Please ensure your code follows the project's style guidelines and includes appropriate tests.
 
-For support, please open an issue in the GitHub repository.
+
 
 ---
 
-Made with ❤️ by [Your Name]
+Made with ❤️ in _India_

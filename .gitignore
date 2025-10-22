@@ -9,7 +9,9 @@ wheels/
 # Virtual environments
 .venv
 
-
-models/
+.env
+ai_models_cache/
 uploads/
 output/
+
+services/__pycache__
