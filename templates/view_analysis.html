@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Meeting Assistant – Analysis</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    html, body, #root {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Display", "Inter", sans-serif;
+      background: radial-gradient(circle at 30% 20%, #0a0a0a 0%, #000 100%);
+      color: white;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    
+    body {
+      padding: 1.5rem;
+      box-sizing: border-box;
+    }
+
+    .background {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      overflow: hidden;
+    }
+
+    .blob {
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      background: white;
+      opacity: 0.05;
+      filter: blur(160px);
+      border-radius: 50%;
+      animation: float 12s ease-in-out infinite;
+    }
+
+    .blob:nth-child(1) { top: -100px; left: -100px; animation-delay: 0s; }
+    .blob:nth-child(2) { bottom: -100px; right: -100px; animation-delay: 3s; }
+    .blob:nth-child(3) { top: 50%; left: 70%; width: 300px; height: 300px; animation-delay: 6s; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) scale(1); opacity: 0.05; }
+      50% { transform: translateY(-30px) scale(1.1); opacity: 0.1; }
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(25px) saturate(180%);
+      -webkit-backdrop-filter: blur(25px) saturate(180%);
+    }
+
+    .tile {
+      transition: all 0.35s ease;
+    }
+    .tile:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 50px rgba(255, 255, 255, 0.08);
+    }
+
+    /* ✅ Scrollbar Styling */
+    .scrollable-content {
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.15) transparent;
+    }
+    .scrollable-content::-webkit-scrollbar {
+      width: 6px;
+    }
+    .scrollable-content::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.15);
+      border-radius: 3px;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col items-center px-6 py-10">
+  <div class="background">
+    <div class="blob"></div>
+    <div class="blob"></div>
+    <div class="blob"></div>
+  </div>
+
+  <div class="w-full max-w-6xl z-10 flex flex-col gap-4 mx-auto">
+    
+    <!-- Header -->
+    <section class="tile glass rounded-2xl p-4">
+      <div class="flex flex-col gap-1">
+        <div class="flex items-center justify-start gap-5">
+          <div class="flex items-center gap-3">
+            <i data-lucide="presentation" class="w-5 h-5"></i>
+            <h1 class="text-lg font-semibold">Meeting Analysis</h1>
+          </div>
+          <div class="text-neutral-400 text-sm flex items-center gap-2">
+            <i data-lucide="calendar" class="w-4 h-4"></i>
+            <span id="meetingDate" class="text-sm">Date</span>
+          </div>
+        </div>
+        <h2 id="meetingTitle" class="text-2xl text-neutral-300 ml-8 mt-1">Meeting Title</h2>
+      </div>
+    </section>
+
+    <!-- ✅ Second Row - Fixed Height with Scrollable Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- Summary -->
+      <section class="tile glass rounded-2xl p-4 flex flex-col h-[350px]">
+        <h2 class="text-lg font-medium mb-3 flex items-center gap-2">
+          <i data-lucide="file-text" class="w-5 h-5"></i>
+          Summary
+        </h2>
+        <div class="scrollable-content flex-1 pr-2 -mr-2">
+          <p id="meetingSummary" class="text-neutral-300 text-sm leading-relaxed"></p>
+        </div>
+      </section>
+
+      <!-- Key Points -->
+      <section class="tile glass rounded-2xl p-4 flex flex-col h-[350px]">
+        <div class="flex items-center gap-2 mb-3">
+          <i data-lucide="key" class="w-5 h-5"></i>
+          <h2 class="text-lg font-medium">Key Points</h2>
+        </div>
+        <div class="scrollable-content flex-1 pr-2 -mr-2">
+          <ul id="meetingKeyPoints" class="space-y-2 text-sm text-neutral-300"></ul>
+        </div>
+      </section>
+
+      <!-- Action Items -->
+      <section class="tile glass rounded-2xl p-4 flex flex-col h-[350px]">
+        <h2 class="text-lg font-medium mb-3 flex items-center gap-2">
+          <i data-lucide="check-circle" class="w-5 h-5"></i>
+          Action Items
+        </h2>
+        <div id="meetingTodos" class="scrollable-content flex-1 space-y-3 pr-2 -mr-2">
+          <!-- Filled dynamically -->
+        </div>
+      </section>
+    </div>
+
+    <!-- ✅ Third Row - Slightly Taller -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- Detailed Notes -->
+      <section class="tile glass rounded-2xl p-4 flex flex-col h-[250px]">
+        <h2 class="text-lg font-medium mb-3 flex items-center gap-2">
+          <i data-lucide="notebook-pen" class="w-5 h-5"></i>
+          Detailed Notes
+        </h2>
+        <div id="meetingNotes" class="scrollable-content flex-1 text-neutral-300 text-sm leading-relaxed whitespace-pre-wrap pr-2 -mr-2"></div>
+      </section>
+
+      <!-- Transcript -->
+      <section class="tile glass rounded-2xl p-4 flex flex-col h-[250px]">
+        <h2 class="text-lg font-medium mb-3 flex items-center gap-2">
+          <i data-lucide="closed-caption" class="w-5 h-5"></i>
+          Meeting Transcript
+        </h2>
+        <div id="meetingTranscript" class="scrollable-content flex-1 space-y-4 text-sm text-neutral-300 pr-2 -mr-2">
+        </div>
+      </section>
+    </div>
+
+    <!-- Footer -->
+    <section class="tile glass rounded-2xl p-3 flex justify-center mt-4">
+      <a href="/" class="px-5 py-2 rounded-xl bg-white text-black font-medium hover:bg-neutral-200 transition flex items-center gap-2">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        Back to Meeting Recorder
+      </a>
+    </section>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    const analysis = JSON.parse(localStorage.getItem('ai_analysis') || '{}');
+
+    function safeSet(id, content) {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = content;
+    }
+
+    if (analysis) {
+      safeSet('meetingTitle', analysis.meeting_title || 'Untitled Meeting');
+      safeSet('meetingDate', new Date().toLocaleDateString());
+      safeSet('meetingSummary', analysis.meeting_summery || 'No summary provided.');
+
+      const keypoints = analysis.meeting_keypoints || [];
+      document.getElementById('meetingKeyPoints').innerHTML = keypoints.map(p => `
+        <li class="flex items-start gap-0 p-3 glass rounded-lg hover:bg-white/5 transition-colors duration-200">
+          <span class="text-sm text-neutral-200">${p}</span>
+        </li>
+      `).join('');
+
+      if (analysis.meeting_transcript_text) {
+        const transcriptContainer = document.getElementById('meetingTranscript');
+        const transcriptLines = analysis.meeting_transcript_text.split('\n\n').filter(Boolean);
+        transcriptContainer.innerHTML = transcriptLines.map(entry => {
+          if (entry.trim() === 'WEBVTT') return '';
+          const [timestampLine, ...dialogueLines] = entry.split('\n');
+          const [speaker, ...dialogue] = dialogueLines.join('\n').split(':');
+          const isSpeakerLine = speaker && speaker.trim().match(/^\[SPEAKER_\d+\]/);
+          if (isSpeakerLine) {
+            const speakerName = speaker.trim().replace(/^\[|\]$/g, '');
+            return `
+              <div class="mb-4">
+                <div class="flex items-center gap-2 mb-1">
+                  <div class="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0"></div>
+                  <span class="font-medium text-blue-300">${speakerName}</span>
+                  <span class="text-xs text-neutral-500">${timestampLine.split(' --> ')[0]}</span>
+                </div>
+                <p class="ml-4 text-neutral-200">${dialogue.join(':').trim()}</p>
+              </div>`;
+          } else {
+            return `<div class="text-xs text-neutral-400 italic">${entry}</div>`;
+          }
+        }).join('');
+      }
+
+      const todos = analysis.meeting_todos || [];
+      document.getElementById('meetingTodos').innerHTML = todos.map(todo => `
+        <div class="group relative p-3 glass rounded-lg hover:bg-white/5 transition-all duration-200">
+          <div class="flex items-start justify-between gap-2 mb-1">
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-white">${todo.todo_title || 'Untitled task'}</div>
+            </div>
+            ${todo.todo_priority ? `
+              <div class="w-2.5 h-2.5 rounded-full ${getPriorityDotColor(todo.todo_priority)} flex-shrink-0 mt-1"
+                   title="${(todo.todo_priority || '').toLowerCase()}"></div>` : ''
+            }
+          </div>
+          ${todo.todo_description ? `<p class="text-sm text-neutral-400 mb-2 line-clamp-2">${todo.todo_description}</p>` : ''}
+          ${todo.todo_deadline ? `
+            <div class="flex items-center gap-1.5 text-xs text-neutral-400">
+              <i data-lucide="calendar" class="w-3.5 h-3.5 opacity-70"></i>
+              <span>${todo.todo_deadline}</span>
+            </div>` : ''
+          }
+        </div>
+      `).join('');
+
+      safeSet('meetingNotes', analysis.meeting_notes || 'No detailed notes available.');
+    }
+
+    function getPriorityDotColor(p) {
+      const val = (p || '').toLowerCase();
+      if (val.includes('high')) return 'bg-red-500';
+      if (val.includes('medium')) return 'bg-yellow-500';
+      if (val.includes('low')) return 'bg-green-500';
+      return 'bg-white/30';
+    }
+  </script>
+</body>
+</html>

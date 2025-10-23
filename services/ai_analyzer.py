@@ -32,7 +32,7 @@ def llm_process_subs_file(subs_file_path):
         "meeting_summery":  a good summary of the meeting,
         "meeting_keypoints":  the keypoints and keytakeaways from the meeting,
         "meeting_todos" : [{todo_title, todo_deadline, todo_
-        priority}] the todos and action items from the meeting,
+        priority("high", "medium", "low")}] the todos and action items from the meeting,
         "meeting_notes" :  the notes from the meeting,
     }
 
