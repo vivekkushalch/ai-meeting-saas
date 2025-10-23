@@ -1,6 +1,11 @@
 # ai-meeting-saas - AI Meeting Assistant
 
-ai-meeting-saas is an intelligent meeting assistant that helps you transcribe, analyze, and summarize your meeting recordings. It processes audio files, generates transcripts, and provides AI-powered insights including meeting summaries, key points, and action items.
+> ai-meeting-saas is an intelligent meeting assistant that helps you transcribe, analyze, and summarize your meeting recordings. It processes audio files, generates transcripts, and provides AI-powered insights including meeting summaries, key points, and action items.
+
+
+<img width="959" height="478" alt="Screenshot 2025-10-23 235722" src="https://github.com/user-attachments/assets/053f2df6-6e3c-46d1-b895-e3f778b97880" />
+<img width="943" height="479" alt="Screenshot 2025-10-24 010754" src="https://github.com/user-attachments/assets/3750be10-f1da-48a2-aa43-f2e099c2c0b4" />
+
 
 ## ✨ Features
 
