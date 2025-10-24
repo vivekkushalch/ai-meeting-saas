@@ -13,16 +13,36 @@ from fastapi.templating import Jinja2Templates
 from services.audio_transcriber import transcribe_diarize_audio
 from services.ai_analyzer import llm_process_subs_file
 
+import traceback
+
+
+
 # Configuration
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = './uploads'
 ALLOWED_EXTENSIONS = {'wav', 'mp3', 'ogg', 'm4a', 'webm'}
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB max file size
 MIN_FILE_SIZE = 1 * 1024  # 1KB min file size
 
-# Ensure upload and output directories exist
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs('./output', exist_ok=True)
-os.makedirs('./ai_models_cache', exist_ok=True)
+def ensure_dirs():
+    """Ensure all required directories exist with proper permissions."""
+    dirs = [UPLOAD_FOLDER, 'output', 'ai_models_cache']
+    for dir_path in dirs:
+        try:
+            # Create directory if it doesn't exist
+            os.makedirs(dir_path, mode=0o777, exist_ok=True)
+            # Ensure it's writable
+            os.chmod(dir_path, 0o777)
+            # Debug output
+            stat_info = os.stat(dir_path)
+            print(f"Directory: {dir_path}")
+            print(f"  - UID: {stat_info.st_uid}, GID: {stat_info.st_gid}")
+            print(f"  - Permissions: {oct(stat_info.st_mode)[-3:]}")
+        except Exception as e:
+            print(f"Error creating/setting permissions for {dir_path}: {e}")
+            raise
+
+# Ensure all directories exist with proper permissions
+ensure_dirs()
 
 app = FastAPI()
 
@@ -119,6 +139,54 @@ def get_dummy_analysis():
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     try:
+        # Debug: Print current working directory and file structure
+        import os
+        from pathlib import Path
+        
+        print("\n=== Current Working Directory ===")
+        print(os.getcwd())
+        
+        print("\n=== Directory Structure ===")
+        for root, dirs, files in os.walk('.'):
+            # Skip .venv directory and its contents
+            if '.venv' in dirs:
+                dirs.remove('.venv')
+                
+            level = root.replace('.', '').count(os.sep)
+            indent = ' ' * 4 * level
+            print(f"{indent}{os.path.basename(root)}/")
+            subindent = ' ' * 4 * (level + 1)
+            for f in files:
+                print(f"{subindent}{f}")
+        
+        # Show detailed contents of uploads and output directories
+        print("\n=== Uploads Directory Contents ===")
+        uploads_path = Path('uploads')
+        if uploads_path.exists() and uploads_path.is_dir():
+            for item in uploads_path.glob('*'):
+                if item.is_file():
+                    size_mb = item.stat().st_size / (1024 * 1024)
+                    print(f"{item.name} - {size_mb:.2f} MB")
+                else:
+                    print(f"{item.name}/")
+        else:
+            print("Uploads directory does not exist")
+            
+        print("\n=== Output Directory Contents ===")
+        output_path = Path('output')
+        if output_path.exists() and output_path.is_dir():
+            for item in output_path.glob('*'):
+                if item.is_file():
+                    size_mb = item.stat().st_size / (1024 * 1024)
+                    print(f"{item.name} - {size_mb:.2f} MB")
+                else:
+                    print(f"{item.name}/")
+        else:
+            print("Output directory does not exist")
+            
+        print("\n")
+        
+        # Check file extension
         # Check file extension
         if not allowed_file(file.filename):
             raise HTTPException(
@@ -135,6 +203,8 @@ async def upload_file(file: UploadFile = File(...)):
         temp_path = f"{filepath}.temp"
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+
+        print(f"File saved to: {temp_path}")    
         
         # Check file size
         file_size = os.path.getsize(temp_path)
@@ -164,6 +234,8 @@ async def upload_file(file: UploadFile = File(...)):
             output_dir='./output',
             hf_token=os.getenv("HF_API_KEY")
         )
+
+        print(f"Transcription saved to: {vtt_path}")
         
         print("LLM processing...")
         # Process with LLM
@@ -221,6 +293,8 @@ async def upload_file(file: UploadFile = File(...)):
         temp_path = f"{filepath}.temp"
         if os.path.exists(temp_path):
             os.remove(temp_path)
+
+        traceback.print_exc()  
             
         raise HTTPException(
             status_code=500,
