@@ -106,6 +106,7 @@ def transcribe_diarize_audio(
     audio_path: str,
     output_dir: str = "./output",
     model: str = "base",
+    diarize: bool = True,
     language: Optional[str] = None,
     hf_token: Optional[str] = None,
     min_speakers: Optional[int] = None,
@@ -138,7 +139,7 @@ def transcribe_diarize_audio(
         language=language,
         output_dir=output_dir,
         output_format="vtt",
-        diarize=True,
+        diarize=diarize,
         min_speakers=min_speakers,
         max_speakers=max_speakers,
         hf_token=hf_token or os.getenv("HF_API_KEY")

@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -137,7 +137,10 @@ def get_dummy_analysis():
     return dummy_data
 
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(
+    file: UploadFile = File(...),
+    diarize: bool = Form(True)
+):
     try:
         # Debug: Print current working directory and file structure
         import os
@@ -228,15 +231,14 @@ async def upload_file(file: UploadFile = File(...)):
         file_size_kb = file_size / 1024
 
         print("Transcribing audio...")
-        # Transcribe audio
+        # Process the file with WhisperX
         vtt_path = transcribe_diarize_audio(
-            audio_path=filepath,
-            output_dir='./output',
-            hf_token=os.getenv("HF_API_KEY")
+            filepath,
+            output_dir='output',
+            model='base',
+            language='en',
+            diarize=diarize,
         )
-
-        print(f"Transcription saved to: {vtt_path}")
-        
         print("LLM processing...")
         # Process with LLM
         processed = llm_process_subs_file(vtt_path.replace('uploads', 'output'))
@@ -303,4 +305,9 @@ async def upload_file(file: UploadFile = File(...)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    uvicorn.run(
+        "app:app", 
+        # host="0.0.0.0", 
+        port=7860, 
+        reload=True
+    )

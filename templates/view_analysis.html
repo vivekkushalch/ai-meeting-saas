@@ -199,26 +199,66 @@
       if (analysis.meeting_transcript_text) {
         const transcriptContainer = document.getElementById('meetingTranscript');
         const transcriptLines = analysis.meeting_transcript_text.split('\n\n').filter(Boolean);
-        transcriptContainer.innerHTML = transcriptLines.map(entry => {
-          if (entry.trim() === 'WEBVTT') return '';
-          const [timestampLine, ...dialogueLines] = entry.split('\n');
-          const [speaker, ...dialogue] = dialogueLines.join('\n').split(':');
-          const isSpeakerLine = speaker && speaker.trim().match(/^\[SPEAKER_\d+\]/);
-          if (isSpeakerLine) {
-            const speakerName = speaker.trim().replace(/^\[|\]$/g, '');
-            return `
-              <div class="mb-4">
-                <div class="flex items-center gap-2 mb-1">
-                  <div class="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0"></div>
-                  <span class="font-medium text-blue-300">${speakerName}</span>
-                  <span class="text-xs text-neutral-500">${timestampLine.split(' --> ')[0]}</span>
-                </div>
-                <p class="ml-4 text-neutral-200">${dialogue.join(':').trim()}</p>
-              </div>`;
-          } else {
-            return `<div class="text-xs text-neutral-400 italic">${entry}</div>`;
-          }
-        }).join('');
+        
+        // Check if this is a diarized transcript (contains speaker tags)
+        const isDiarized = analysis.meeting_transcript_text.includes('[SPEAKER_');
+        
+        if (isDiarized) {
+          // Display with speaker information
+          transcriptContainer.innerHTML = transcriptLines.map(entry => {
+            if (entry.trim() === 'WEBVTT') return '';
+            const [timestampLine, ...dialogueLines] = entry.split('\n');
+            const [speaker, ...dialogue] = dialogueLines.join('\n').split(':');
+            const isSpeakerLine = speaker && speaker.trim().match(/^\[SPEAKER_\d+\]/);
+            if (isSpeakerLine) {
+              const speakerName = speaker.trim().replace(/^\[|\]$/g, '');
+              return `
+                <div class="mb-4">
+                  <div class="flex items-center gap-2 mb-1">
+                    <div class="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0"></div>
+                    <span class="font-medium text-blue-300">${speakerName}</span>
+                    <span class="text-xs text-neutral-500">${timestampLine.split(' --> ')[0]}</span>
+                  </div>
+                  <p class="ml-4 text-neutral-200">${dialogue.join(':').trim()}</p>
+                </div>`;
+            } else {
+              return `<div class="text-xs text-neutral-400 italic">${entry}</div>`;
+            }
+          }).join('');
+        } else {
+          // Display as plain text with timestamps
+          transcriptContainer.innerHTML = transcriptLines
+            .filter(entry => {
+              const trimmed = entry.trim();
+              return trimmed !== 'WEBVTT' && 
+                     !trimmed.startsWith('NOTE ') && 
+                     trimmed.includes('-->');
+            })
+            .map(entry => {
+              const lines = entry.split('\n');
+              const timestampLine = lines.find(line => line.includes('-->')) || '';
+              const [startTime, endTime] = timestampLine.split(' --> ').map(t => t.trim());
+              
+              // Get content lines (excluding timestamp and empty lines)
+              const content = lines
+                .filter(line => !line.includes('-->') && line.trim() !== '')
+                .join(' ')
+                .trim();
+              
+              if (!content) return '';
+              
+              return `
+                <div class="mb-3 p-3 glass rounded-lg">
+                  <div class="flex items-center gap-2 text-xs text-neutral-400 mb-1">
+                    <span>${formatTimestamp(startTime)}</span>
+                    <span>•</span>
+                    <span>${formatTimestamp(endTime)}</span>
+                  </div>
+                  <p class="text-neutral-200">${content}</p>
+                </div>`;
+            })
+            .join('');
+        }
       }
 
       const todos = analysis.meeting_todos || [];
@@ -244,6 +284,14 @@
       `).join('');
 
       safeSet('meetingNotes', analysis.meeting_notes || 'No detailed notes available.');
+    }
+
+    function formatTimestamp(timestamp) {
+      if (!timestamp) return '';
+      // Extract just the time part (HH:MM:SS.mmm)
+      const timePart = timestamp.split(' ')[0];
+      // Remove milliseconds if present
+      return timePart.split('.')[0];
     }
 
     function getPriorityDotColor(p) {
