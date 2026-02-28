@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Meeting Assistant – Record</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Display", "Inter", sans-serif;
+      background: radial-gradient(circle at 20% 30%, #0a0a0a 0%, #000 100%);
+      overflow-x: hidden;
+      color: white;
+    }
+
+    /* Animated floating light blobs */
+    .background {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      overflow: hidden;
+    }
+    .blob {
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      background: white;
+      opacity: 0.05;
+      filter: blur(160px);
+      border-radius: 50%;
+      animation: float 12s ease-in-out infinite;
+    }
+    .blob:nth-child(1) { top: -100px; left: -100px; animation-delay: 0s; }
+    .blob:nth-child(2) { bottom: -100px; right: -100px; animation-delay: 3s; }
+    .blob:nth-child(3) { top: 50%; left: 70%; width: 300px; height: 300px; animation-delay: 6s; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) scale(1); opacity: 0.05; }
+      50% { transform: translateY(-30px) scale(1.1); opacity: 0.1; }
+    }
+
+    /* Glass panels */
+    .glass {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(25px) saturate(180%);
+      -webkit-backdrop-filter: blur(25px) saturate(180%);
+    }
+
+    /* Tiles */
+    .tile {
+      transition: all 0.35s ease;
+    }
+    .tile:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 50px rgba(255, 255, 255, 0.08);
+    }
+    
+    /* Toggle switch styles */
+    #diarizeToggle:checked ~ .dot,
+    #includeMicToggle:checked ~ .dot {
+      transform: translateX(100%);
+      background-color: #3b82f6;
+    }
+    #diarizeToggle:checked ~ .block,
+    #includeMicToggle:checked ~ .block {
+      background-color: rgba(59, 130, 246, 0.5);
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col items-center justify-center px-6 py-10">
+  <!-- Dynamic light background -->
+  <div class="background">
+    <div class="blob"></div>
+    <div class="blob"></div>
+    <div class="blob"></div>
+  </div>
+
+  <main class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl z-10">
+    <!-- Tile 1: Header -->
+    <section class="tile glass rounded-2xl p-8 flex flex-col justify-center space-y-3">
+      <h1 class="text-3xl font-semibold tracking-tight">Meeting Assistant</h1>
+      <p class="text-neutral-400 text-sm leading-relaxed">
+        Capture your meeting seamlessly. Record, upload, and let AI handle the analysis.
+      </p>
+    </section>
+
+    <!-- Tile 2: Controls -->
+    <section class="tile glass rounded-2xl p-8 flex flex-col justify-center items-center space-y-6">
+      <div class="flex flex-col items-center gap-2 w-full">
+        <div id="timer" class="text-2xl font-mono font-medium mb-4">00:00:00</div>
+        <div class="flex gap-4 mb-4">
+          <button id="startBtn" class="px-6 py-2 rounded-xl bg-white text-black font-medium hover:bg-neutral-200 transition flex items-center gap-2">
+            <i data-lucide="mic" class="w-4 h-4"></i>
+            Start
+          </button>
+          <button id="stopBtn" disabled class="px-6 py-2 rounded-xl bg-neutral-800 text-neutral-500 cursor-not-allowed font-medium flex items-center gap-2">
+            <i data-lucide="square" class="w-4 h-4"></i>
+            Stop
+          </button>
+        </div>
+        <div class="flex flex-col gap-4 w-full max-w-xs">
+          <div class="flex items-center justify-between w-full">
+            <label for="diarizeToggle" class="flex items-center cursor-pointer">
+              <div class="relative">
+                <input type="checkbox" id="diarizeToggle" class="sr-only" checked>
+                <div class="block bg-neutral-700 w-14 h-8 rounded-full"></div>
+                <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition transform"></div>
+              </div>
+              <div class="ml-3 text-sm font-medium">Speaker Diarization</div>
+            </label>
+          </div>
+          
+          <div class="flex items-center justify-between w-full">
+            <label for="includeMicToggle" class="flex items-center cursor-pointer">
+              <div class="relative">
+                <input type="checkbox" id="includeMicToggle" class="sr-only" checked>
+                <div class="block bg-neutral-700 w-14 h-8 rounded-full"></div>
+                <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition transform"></div>
+              </div>
+              <div class="ml-3 text-sm font-medium">Include Microphone</div>
+            </label>
+          </div>
+        </div>
+      </div>
+      <p id="status" class="text-sm text-neutral-400">Status: Idle</p>
+    </section>
+
+    <!-- Tile 3: Recordings -->
+    <section class="tile glass rounded-2xl p-8 md:col-span-2">
+      <h2 class="text-xl font-medium mb-4">Recordings</h2>
+      <div id="downloads" class="space-y-4">
+        <p class="text-neutral-500 text-sm">No recordings yet.</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const statusEl = document.getElementById('status');
+    const timerEl = document.getElementById('timer');
+    const downloadsEl = document.getElementById('downloads');
+    const diarizeToggle = document.getElementById('diarizeToggle');
+    const includeMicToggle = document.getElementById('includeMicToggle');
+    let recorder, chunks = [], latestBlob = null, startTime, timerInterval;
+
+    function updateTimer() {
+      const now = new Date();
+      const elapsed = Math.floor((now - startTime) / 1000);
+      const hours = Math.floor(elapsed / 3600).toString().padStart(2, '0');
+      const minutes = Math.floor((elapsed % 3600) / 60).toString().padStart(2, '0');
+      const seconds = (elapsed % 60).toString().padStart(2, '0');
+      timerEl.textContent = `${hours}:${minutes}:${seconds}`;
+      
+      // Update status with current recording time
+      setStatus(`Recording: ${hours}:${minutes}:${seconds}`, 'recording');
+    }
+
+    function startTimer() {
+      startTime = new Date();
+      timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+    }
+
+    function resetTimer() {
+      stopTimer();
+      timerEl.textContent = '00:00:00';
+    }
+
+    async function startRecording() {
+      try {
+        setStatus('Requesting recording permissions...', 'loading');
+        startBtn.disabled = true;
+        startBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+          video: true, 
+          audio: true 
+        });
+
+        let combinedStream;
+        const includeMic = includeMicToggle.checked;
+        
+        if (includeMic) {
+          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          combinedStream = new MediaStream([
+            ...screenStream.getAudioTracks(), 
+            ...micStream.getAudioTracks()
+          ]);
+          
+          // Store mic stream to stop it later
+          window.micStream = micStream;
+        } else {
+          combinedStream = new MediaStream([
+            ...screenStream.getVideoTracks(),
+            ...screenStream.getAudioTracks()
+          ]);
+        }
+        
+        // Store screen stream to stop it later
+        window.screenStream = screenStream;
+
+        recorder = new MediaRecorder(combinedStream);
+        chunks = [];
+
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstart = () => {
+          setStatus('Recording started', 'recording');
+          stopBtn.disabled = false;
+          stopBtn.className = "px-6 py-2 rounded-xl bg-red-500 text-white font-medium hover:bg-red-600 transition flex items-center gap-2";
+          startTimer();
+        };
+
+        recorder.onstop = () => {
+          const blob = new Blob(chunks, { type: 'audio/webm' });
+          latestBlob = blob;
+          const url = URL.createObjectURL(blob);
+          const includeMic = includeMicToggle.checked;
+          const fileName = `recording_${includeMic ? 'with_mic' : 'screen_only'}_${new Date().toISOString().slice(0, 10)}.webm`;
+
+          const container = document.createElement('div');
+          container.className = 'glass rounded-xl p-5 border border-white/10 space-y-4';
+
+          container.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <i data-lucide="${includeMic ? 'mic' : 'monitor'}" class="w-4 h-4 text-neutral-400"></i>
+                <span class="text-sm font-medium text-neutral-200">${includeMic ? 'Screen + Microphone' : 'Screen Only'}</span>
+              </div>
+              <span class="text-xs px-2 py-1 bg-white/10 rounded-full text-neutral-300">
+                <i data-lucide="clock" class="w-3 h-3 inline-block mr-1"></i>
+                ${new Date().toLocaleTimeString()}
+              </span>
+            </div>
+            
+            <audio controls src="${url}" class="w-full rounded-md bg-black/20"></audio>
+            
+            <div class="flex justify-between items-center gap-3">
+              <a href="${url}" 
+                 download="${fileName}" 
+                 class="flex-1 px-4 py-2 rounded-lg bg-white text-black font-medium hover:bg-neutral-200 transition text-sm flex items-center justify-center gap-2">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>Download</span>
+              </a>
+              <button id="uploadBtn" 
+                      class="flex-1 px-4 py-2 rounded-lg bg-white text-black font-medium hover:bg-neutral-200 transition text-sm flex items-center justify-center gap-2">
+                <i data-lucide="upload" class="w-4 h-4"></i>
+                <span>Upload</span>
+              </button>
+            </div>
+            <div class="h-1 bg-white/10 rounded-full overflow-hidden">
+              <div id="progressFill" class="h-1 bg-white w-0 transition-all"></div>
+            </div>
+            <p id="uploadStatus" class="text-xs text-neutral-400 text-center">Ready to upload</p>
+          `;
+
+          downloadsEl.innerHTML = '';
+          downloadsEl.appendChild(container);
+
+          container.querySelector('#uploadBtn').onclick = () => uploadRecording(
+            container.querySelector('#progressFill'),
+            container.querySelector('#uploadStatus')
+          );
+
+          // Stop all tracks from all streams
+          if (window.screenStream) {
+            window.screenStream.getTracks().forEach(track => track.stop());
+          }
+          if (window.micStream) {
+            window.micStream.getTracks().forEach(track => track.stop());
+          }
+          
+          stopBtn.disabled = true;
+          stopBtn.className = "px-6 py-2 rounded-xl bg-neutral-800 text-neutral-500 cursor-not-allowed font-medium";
+          startBtn.disabled = false;
+          startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+          setStatus('Recording stopped', 'stopped');
+        };
+
+        recorder.start();
+      } catch (err) {
+        alert('Error: ' + err.message);
+        startBtn.disabled = false;
+      }
+    }
+
+    function stopRecording() {
+      if (recorder && recorder.state === 'recording') {
+        setStatus('Stopping recording...', 'loading');
+        recorder.stop();
+        stopTimer();
+      }
+    }
+
+    function uploadRecording(fill, statusText) {
+      if (!latestBlob) {
+        setStatus('No recording to upload', 'error');
+        return alert('No recording to upload');
+      }
+      
+      const formData = new FormData();
+      formData.append('file', new File([latestBlob], 'recording.webm', { type: 'audio/webm' }));
+      formData.append('diarize', diarizeToggle.checked);
+      
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/upload');
+      
+      // Update UI for upload start
+      fill.style.width = '0%';
+      fill.style.backgroundColor = '#3b82f6';
+      statusText.innerHTML = `
+        <div class="flex items-center gap-2 text-xs text-blue-300">
+          <i data-lucide="upload-cloud" class="w-3 h-3 animate-pulse"></i>
+          <span>Uploading...</span>
+        </div>
+      `;
+      lucide.createIcons();
+      
+      xhr.upload.onprogress = e => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          fill.style.width = `${percent}%`;
+          
+          // Update status text with progress
+          if (percent < 100) {
+            statusText.innerHTML = `
+              <div class="flex items-center gap-2 text-xs text-blue-300">
+                <i data-lucide="upload-cloud" class="w-3 h-3 animate-pulse"></i>
+                <span>Uploading: ${percent}%</span>
+              </div>
+            `;
+            lucide.createIcons();
+          }
+        }
+      };
+      
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          try {
+            const resp = JSON.parse(xhr.responseText);
+            fill.style.backgroundColor = '#10b981'; // Green on success
+            statusText.innerHTML = `
+              <div class="flex items-center gap-2 text-xs text-green-400">
+                <i data-lucide="check-circle" class="w-3 h-3"></i>
+                <span>Upload complete</span>
+              </div>
+            `;
+            if (resp.llm_processed) {
+              localStorage.setItem('ai_analysis', JSON.stringify(resp.llm_processed));
+              window.location.href = 'analysis';
+            }
+          } catch (e) {
+            console.error('Error parsing response:', xhr.responseText);
+            fill.style.backgroundColor = '#ef4444';
+            statusText.innerHTML = `
+              <div class="flex items-center gap-2 text-xs text-red-400">
+                <i data-lucide="alert-circle" class="w-3 h-3"></i>
+                <span>Error processing upload</span>
+              </div>
+            `;
+          }
+        } else {
+          fill.style.backgroundColor = '#ef4444';
+          statusText.innerHTML = `
+            <div class="flex items-center gap-2 text-xs text-red-400">
+              <i data-lucide="alert-triangle" class="w-3 h-3"></i>
+              <span>Upload failed</span>
+            </div>
+          `;
+        }
+      };
+      xhr.onerror = () => {
+        fill.style.backgroundColor = '#ef4444';
+        statusText.innerHTML = `
+          <div class="flex items-center gap-2 text-xs text-red-400">
+            <i data-lucide="alert-triangle" class="w-3 h-3"></i>
+            <span>Upload failed</span>
+          </div>
+        `;
+      };
+      xhr.send(formData);
+    }
+
+    // Initialize Lucide icons
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+    });
+
+    const analysis = JSON.parse(localStorage.getItem('ai_analysis') || '{}');
+    
+    // Status message helper function
+    function setStatus(message, type = 'info') {
+      const statusEl = document.getElementById('status');
+      if (!statusEl) return;
+      
+      const statusIcons = {
+        info: 'info',
+        success: 'check-circle',
+        error: 'alert-circle',
+        loading: 'loader-2',
+        recording: 'mic',
+        stopped: 'square'
+      };
+      
+      const icon = statusIcons[type] || 'info';
+      statusEl.innerHTML = `
+        <div class="flex items-center gap-2">
+          <i data-lucide="${icon}" class="w-4 h-4 ${type === 'loading' ? 'animate-spin' : ''}"></i>
+          <span>${message}</span>
+        </div>
+      `;
+      
+      // Refresh icons after updating
+      lucide.createIcons();
+    }
+
+    // Initialize button states
+    startBtn.onclick = startRecording;
+    stopBtn.onclick = stopRecording;
+  </script>
+</body>
+</html>
