@@ -1,0 +1,189 @@
+version: '3.8'
+
+services:
+  # Database Service (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    container_name: ai_meeting_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_DATABASE:-ai_meeting_saas}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ai-meeting-network
+
+  # Message Broker (RabbitMQ)
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: ai_meeting_rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "15672:15672" # Management UI
+    networks:
+      - ai-meeting-network
+
+  # Result Backend (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: ai_meeting_redis
+    restart: always
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - ai-meeting-network
+
+  # Blob Storage (MinIO)
+  minio:
+    image: minio/minio:latest
+    container_name: ai_meeting_minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - ai-meeting-network
+
+  # Backend Service (NestJS)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai_meeting_backend
+    restart: always
+    depends_on:
+      - db
+      - rabbitmq
+      - redis
+      - minio
+    environment:
+      PORT: ${PORT:-3000}
+      NODE_ENV: ${NODE_ENV:-development}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_DATABASE: ${DB_DATABASE:-ai_meeting_saas}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET_AUDIO: ${MINIO_BUCKET_AUDIO:-audio}
+      MINIO_BUCKET_TRANSCRIPTS: ${MINIO_BUCKET_TRANSCRIPTS:-transcripts}
+      MINIO_BUCKET_ANALYSIS: ${MINIO_BUCKET_ANALYSIS:-analysis}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
+      JWT_SECRET: ${JWT_SECRET:-supersecret}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-24h}
+    ports:
+      - "${PORT:-3000}:3000"
+    networks:
+      - ai-meeting-network
+
+  # Frontend Service (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api/v1}
+    container_name: ai_meeting_frontend
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api/v1}
+    ports:
+      - "3001:3000" # Mapped to 3001 to avoid conflict if both are 3000
+    networks:
+      - ai-meeting-network
+
+  # Worker Service (Celery)
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: ai_meeting_worker
+    restart: always
+    depends_on:
+      - rabbitmq
+      - redis
+      - minio
+    command: ["python", "main.py", "--mode", "worker"]
+    environment:
+      SERVICE_MODE: ${SERVICE_MODE:-combined}
+      WORKER_ID: ${WORKER_ID:-worker-1}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: ${DEBUG:-false}
+      CELERY_BROKER_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      GENAI_API_KEY: ${GENAI_API_KEY}
+      HF_API_KEY: ${HF_API_KEY}
+      WHISPER_MODEL: ${WHISPER_MODEL:-base}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      STORAGE_ENDPOINT: minio:9000
+      STORAGE_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      STORAGE_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      STORAGE_REGION: ${STORAGE_REGION:-us-east-1}
+      STORAGE_SECURE: ${STORAGE_SECURE:-false}
+    networks:
+      - ai-meeting-network
+
+  # Celery Beat (Periodic Tasks)
+  worker-beat:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: ai_meeting_worker_beat
+    restart: always
+    depends_on:
+      - rabbitmq
+      - redis
+    command: ["python", "main.py", "--mode", "beat"]
+    environment:
+      CELERY_BROKER_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    networks:
+      - ai-meeting-network
+
+  # Celery Monitoring (Flower)
+  flower:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: ai_meeting_flower
+    restart: always
+    depends_on:
+      - rabbitmq
+      - redis
+    command: ["python", "main.py", "--mode", "flower"]
+    environment:
+      CELERY_BROKER_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
+      ENABLE_FLOWER: "true"
+      FLOWER_PORT: 5555
+      FLOWER_HOST: 0.0.0.0
+    ports:
+      - "5555:5555"
+    networks:
+      - ai-meeting-network
+
+networks:
+  ai-meeting-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  minio_data:

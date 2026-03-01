@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "AI Meeting Assistant",
+  "version": "1.0.0",
+  "description": "Auto-detect and record your online meetings with AI analysis.",
+  "permissions": [
+    "tabs",
+    "storage",
+    "offscreen",
+    "activeTab",
+    "scripting",
+    "notifications",
+    "tabCapture"
+  ],
+  "host_permissions": [
+    "http://localhost:7860/*",
+    "http://localhost:3000/*",
+    "https://meet.google.com/*",
+    "https://*.zoom.us/*",
+    "https://teams.microsoft.com/*"
+  ],
+  "background": {
+    "service_worker": "js/background.js"
+  },
+  "action": {
+    "default_popup": "html/popup.html",
+    "default_icon": {
+      "16": "icons/icon.png",
+      "48": "icons/icon.png",
+      "128": "icons/icon.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon.png",
+    "48": "icons/icon.png",
+    "128": "icons/icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://meet.google.com/*",
+        "https://*.zoom.us/*",
+        "https://teams.microsoft.com/*"
+      ],
+      "js": [
+        "js/content.js"
+      ]
+    }
+  ]
+}

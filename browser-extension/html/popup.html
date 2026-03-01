@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>AI Meeting Assistant</title>
+  <style>
+    body {
+      width: 320px;
+      padding: 0;
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #fff;
+    }
+
+    .container {
+      padding: 15px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 15px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+    }
+
+    .header img {
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+    }
+
+    .header h1 {
+      font-size: 14px;
+      margin: 0;
+    }
+
+    .settings-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      color: #5f6368;
+    }
+
+    .status-card {
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+
+    .status-text {
+      font-size: 13px;
+      margin-bottom: 10px;
+      font-weight: 500;
+    }
+
+    .status-idle {
+      color: #5f6368;
+    }
+
+    .status-recording {
+      color: #d93025;
+    }
+
+    .status-paused {
+      color: #f29900;
+    }
+
+    .status-uploading {
+      color: #1a73e8;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .btn {
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background-color: #1a73e8;
+      color: white;
+    }
+
+    .btn-danger {
+      background-color: #d93025;
+      color: white;
+    }
+
+    .btn-outline {
+      background-color: white;
+      border-color: #dadce0;
+      color: #3c4043;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #5f6368;
+      margin: 15px 0 8px 0;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .meeting-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .meeting-item {
+      padding: 10px;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .meeting-item:hover {
+      background-color: #f1f3f4;
+    }
+
+    .meeting-item-title {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .meeting-item-meta {
+      font-size: 11px;
+      color: #5f6368;
+    }
+
+    .settings-panel {
+      padding: 15px;
+      border-top: 1px solid #eee;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 4px;
+      color: #3c4043;
+    }
+
+    .form-group input[type="text"] {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-size: 12px;
+    }
+
+    .form-group .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .auth-panel {
+      padding: 20px;
+      text-align: center;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <div class="header-left">
+      <img src="../icons/icon.png" alt="Logo">
+      <h1>AI Meeting Assistant</h1>
+    </div>
+    <button id="settings-toggle" class="settings-btn">⚙️</button>
+  </div>
+
+  <!-- Auth Panel -->
+  <div id="auth-panel" class="auth-panel hidden">
+    <p style="font-size: 13px; color: #5f6368; margin-bottom: 15px;">Please log in to your account</p>
+    <input type="email" id="login-email" placeholder="Email"
+      style="width:100%; padding:8px; margin-bottom:8px; border:1px solid #dadce0; border-radius:4px;">
+    <input type="password" id="login-password" placeholder="Password"
+      style="width:100%; padding:8px; margin-bottom:15px; border:1px solid #dadce0; border-radius:4px;">
+    <button id="login-submit" class="btn btn-primary" style="width:100%;">Log In</button>
+  </div>
+
+  <!-- Main Panel -->
+  <div id="main-panel" class="container">
+    <!-- Status & Controls -->
+    <div class="status-card">
+      <div id="status-text" class="status-text status-idle">Idle</div>
+      <div id="meeting-info" class="meeting-item-meta" style="margin-bottom: 10px; display: none;"></div>
+      <div class="controls">
+        <button id="record-btn" class="btn btn-primary">Start Recording</button>
+        <button id="pause-btn" class="btn btn-outline hidden">Pause</button>
+        <button id="resume-btn" class="btn btn-primary hidden">Resume</button>
+        <button id="stop-btn" class="btn btn-danger hidden">Stop</button>
+      </div>
+    </div>
+
+    <!-- Recent Meetings -->
+    <div class="section-title">Recent Meetings</div>
+    <ul id="meeting-list" class="meeting-list">
+      <li class="meeting-item-meta">Loading meetings...</li>
+    </ul>
+
+    <button id="logout-btn" class="btn btn-outline" style="width: 100%; margin-top: 15px;">Log Out</button>
+  </div>
+
+  <!-- Settings Panel -->
+  <div id="settings-panel" class="settings-panel">
+    <div class="section-title" style="margin-top: 0;">Settings</div>
+    <div class="form-group">
+      <label for="api-url">Backend API URL</label>
+      <input type="text" id="api-url" placeholder="http://localhost:7860/api/v1">
+    </div>
+    <div class="form-group">
+      <label for="frontend-url">Frontend App URL</label>
+      <input type="text" id="frontend-url" placeholder="http://localhost:3000">
+    </div>
+    <div class="form-group">
+      <div class="checkbox-group">
+        <input type="checkbox" id="auto-record">
+        <label for="auto-record">Auto-record meetings</label>
+      </div>
+    </div>
+    <button id="save-settings" class="btn btn-primary" style="width: 100%;">Save Settings</button>
+    <button id="back-btn" class="btn btn-outline" style="width: 100%; margin-top: 8px;">Back</button>
+  </div>
+
+  <script src="../js/popup.js"></script>
+</body>
+
+</html>
