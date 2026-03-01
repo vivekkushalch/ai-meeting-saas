@@ -1,3 +1,16 @@
+---
+title: AI Meeting Assistant
+emoji: 🎙️
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+python_version: '3.12'
+suggested_hardware: cpu-basic
+license: mit
+app_file: app.py
+pinned: false
+---
+
 # AI Meeting Worker Service - Direct Queue Mode
 
 ## 🎯 **Simplified Architecture**
@@ -116,45 +129,6 @@ python main.py --mode flower
 
 ---
 
-## � **Client Usage**
-
-### **Python Client**
-```python
-import asyncio
-from client.queue_client import create_queue_client
-
-async def submit_job():
-    client = await create_queue_client("redis://localhost:6379/0")
-    
-    # Submit transcription job
-    job_id = await client.submit_transcription_job(
-        audio_url="minio://audio/meeting.mp3",
-        options={"language": "en", "diarize": True},
-        meeting_metadata={"title": "Team Meeting"}
-    )
-    
-    print(f"Job submitted: {job_id}")
-    
-    # Check status
-    status = await client.get_job_status(job_id)
-    print(f"Status: {status}")
-    
-    await client.close()
-
-asyncio.run(submit_job())
-```
-
-### **Command Line**
-```bash
-# Run example client
-python client/simple_client.py
-
-# Check service info
-python main.py --mode info
-```
-
----
-
 ## 📈 **Performance**
 
 | Metric | Direct Queue Mode |
@@ -241,117 +215,3 @@ Queue   Processing  Results
 - `SUCCESS`: Job completed
 - `FAILURE`: Job failed
 - `RETRY`: Job being retried
-
----
-
-## 🛠️ **Error Handling**
-
-### **Retry Strategy**
-- **Exponential Backoff**: 60s → 120s → 240s → 300s max
-- **Max Retries**: 3 attempts
-- **Jitter**: Randomized delays
-
-### **Failure Classification**
-- **Retryable**: Network errors, temporary failures
-- **Non-Retryable**: Invalid input, auth errors
-
----
-
-## 🚀 **Scaling**
-
-### **Horizontal Scaling**
-```bash
-# Add more workers
-python main.py --mode worker --worker-id worker-2
-python main.py --mode worker --worker-id worker-3
-```
-
-### **Queue Configuration**
-- **Transcription Queue**: `transcription`
-- **AI Analysis Queue**: `ai_analysis`
-- **Combined Queue**: `combined`
-
-### **Resource Management**
-- **Concurrency**: `WORKER_CONCURRENCY=4`
-- **Task Limits**: Soft/hard timeouts
-- **Memory**: `WORKER_MAX_TASKS_PER_CHILD=1000`
-
----
-
-## � **Troubleshooting**
-
-### **Common Issues**
-1. **Worker not starting**: Check broker connection
-2. **Jobs stuck**: Verify queue routing
-3. **Memory issues**: Reduce concurrency
-4. **Slow processing**: Check resources
-
-### **Debug Commands**
-```bash
-# Worker with debug logging
-python main.py --mode worker --loglevel=debug
-
-# Inspect queues
-celery -A worker.shared.celery_app inspect active
-
-# Check broker connection
-python -c "from shared.celery_app import celery_app; print(celery.broker_connection())"
-```
-
----
-
-## � **Examples**
-
-### **Basic Usage**
-```bash
-# Start worker
-python main.py --mode worker
-
-# Submit job in another terminal
-python client/simple_client.py
-
-# Monitor
-python main.py --mode flower
-```
-
-### **Production Setup**
-```bash
-# Multiple workers
-python main.py --mode worker --worker-id worker-1 &
-python main.py --mode worker --worker-id worker-2 &
-python main.py --mode worker --worker-id worker-3 &
-
-# Beat scheduler
-python main.py --mode beat &
-
-# Flower monitoring
-python main.py --mode flower &
-```
-
----
-
-## 🎯 **Benefits of Direct Queue Mode**
-
-✅ **High Performance**: No HTTP overhead  
-✅ **Simple Architecture**: Fewer components  
-✅ **Easy Scaling**: Just add workers  
-✅ **Low Latency**: Direct queue operations  
-✅ **Resource Efficient**: No API server needed  
-✅ **Clean Separation**: Clear client-worker boundaries  
-
----
-
-## 📖 **Documentation**
-
-- **Implementation Details**: `../docs/implementation.md`
-- **Flower Monitoring**: `http://localhost:5555`
-- **Service Info**: `python main.py --mode info`
-
----
-
-## 🤝 **Getting Help**
-
-1. Check worker status: `python main.py --mode info`
-2. Monitor tasks: Open Flower dashboard
-3. Check logs: Worker console output
-4. Verify broker: Redis/RabbitMQ connection

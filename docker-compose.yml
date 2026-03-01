@@ -122,9 +122,9 @@ services:
       - rabbitmq
       - redis
       - minio
-    command: ["python", "main.py", "--mode", "worker"]
+    command: ["worker"]
     environment:
-      SERVICE_MODE: ${SERVICE_MODE:-combined}
+      SERVICE_MODE: worker
       WORKER_ID: ${WORKER_ID:-worker-1}
       ENVIRONMENT: ${ENVIRONMENT:-production}
       DEBUG: ${DEBUG:-false}
@@ -152,8 +152,9 @@ services:
     depends_on:
       - rabbitmq
       - redis
-    command: ["python", "main.py", "--mode", "beat"]
+    command: ["beat"]
     environment:
+      SERVICE_MODE: beat
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     networks:
@@ -169,8 +170,9 @@ services:
     depends_on:
       - rabbitmq
       - redis
-    command: ["python", "main.py", "--mode", "flower"]
+    command: ["flower"]
     environment:
+      SERVICE_MODE: flower
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
       ENABLE_FLOWER: "true"
       FLOWER_PORT: 5555
