@@ -31,18 +31,17 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_REPO: ${{ secrets.HF_SPACE_ID }} # username/space-name
-          SERVICE_MODE: combined
         run: |
-          cd hf_deploy
-          # We can inject HF specific environment variables into the Dockerfile if needed,
-          # but usually we set them in the Space settings.
+          if [ -z "$HF_TOKEN" ]; then echo "HF_TOKEN secret is missing"; exit 1; fi
+          if [ -z "$HF_REPO" ]; then echo "HF_SPACE_ID secret is missing"; exit 1; fi
           
+          cd hf_deploy
           git init
           git config user.name "autodeploy"
           git config user.email "autodeploy@example.com"
+          git checkout -b main
           git add .
-          git commit -m "Autodeploy"
+          git commit -m "Autodeploy: ${GITHUB_SHA}"
           
-          # Force push to the Hugging Face Space repository
-          # We use the token in the URL for authentication
-          git push --force "https://user:$HF_TOKEN@huggingface.co/spaces/$HF_REPO" master:main
+          # Use the token authentication format for Hugging Face
+          git push --force "https://token:$HF_TOKEN@huggingface.co/spaces/$HF_REPO" main
