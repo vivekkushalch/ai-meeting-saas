@@ -73,12 +73,20 @@ class Config(BaseSettings):
     @property
     def broker_url(self) -> str:
         if self.celery_broker_url:
+            # Add SSL parameters for amqps:// URLs
+            if self.celery_broker_url.startswith("amqps://"):
+                separator = "&" if "?" in self.celery_broker_url else "?"
+                return f"{self.celery_broker_url}{separator}ssl_cert_reqs=CERT_REQUIRED&ssl_verify=true"
             return self.celery_broker_url
         return f"redis://localhost:6379/0"
     
     @property
     def result_backend(self) -> str:
         if self.celery_result_backend:
+            # Add ssl_cert_reqs parameter for rediss:// URLs
+            if self.celery_result_backend.startswith("rediss://"):
+                separator = "&" if "?" in self.celery_result_backend else "?"
+                return f"{self.celery_result_backend}{separator}ssl_cert_reqs=CERT_REQUIRED"
             return self.celery_result_backend
         return f"redis://localhost:6379/0"
 

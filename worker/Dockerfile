@@ -14,10 +14,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Copy dependency files
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml ./
 
 # Install Python dependencies
-RUN uv sync --locked --no-dev
+RUN uv sync --no-dev
 
 # Final stage
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim

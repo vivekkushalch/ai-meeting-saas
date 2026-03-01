@@ -16,6 +16,12 @@ celery_app.conf.update(
     result_backend=config.result_backend,
     broker_connection_retry_on_startup=True,
     
+    # Broker transport options for SSL
+    broker_transport_options={
+        'ssl_cert_reqs': 'CERT_REQUIRED',
+        'ssl_verify': True,
+    } if config.broker_url.startswith('amqps://') else {},
+    
     # Serialization
     task_serializer='json',
     accept_content=['json'],
