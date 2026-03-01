@@ -22,11 +22,9 @@ celery_app.conf.update(
         'ssl_verify': True,
     } if config.broker_url.startswith('amqps://') else {},
     
-    # Result backend SSL options for Redis
-    result_backend_transport_options={
-        'ssl_cert_reqs': 'CERT_REQUIRED',
-        'ssl_ca_certs': None,
-    } if config.result_backend.startswith('rediss://') else {},
+    # Redis backend SSL configuration
+    redis_backend_use_ssl=True,
+    redis_backend_ssl_cert_reqs=None,
     
     # Serialization
     task_serializer='json',

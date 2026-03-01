@@ -73,21 +73,29 @@ class Config(BaseSettings):
     @property
     def broker_url(self) -> str:
         if self.celery_broker_url:
-            # Add SSL parameters for amqps:// URLs
-            if self.celery_broker_url.startswith("amqps://"):
-                separator = "&" if "?" in self.celery_broker_url else "?"
-                return f"{self.celery_broker_url}{separator}ssl_cert_reqs=CERT_REQUIRED&ssl_verify=true"
-            return self.celery_broker_url
+            broker_url = self.celery_broker_url
+            # Add SSL parameters for amqps:// URLs if not present
+            if broker_url.startswith("amqps://"):
+                if "ssl_cert_reqs=" not in broker_url:
+                    separator = "&" if "?" in broker_url else "?"
+                    broker_url = f"{broker_url}{separator}ssl_cert_reqs=CERT_REQUIRED&ssl_verify=true"
+                print(f"Final broker URL: {broker_url}")
+                return broker_url
+            return broker_url
         return f"redis://localhost:6379/0"
     
     @property
     def result_backend(self) -> str:
         if self.celery_result_backend:
-            # Add ssl_cert_reqs parameter for rediss:// URLs
-            if self.celery_result_backend.startswith("rediss://"):
-                separator = "&" if "?" in self.celery_result_backend else "?"
-                return f"{self.celery_result_backend}{separator}ssl_cert_reqs=CERT_REQUIRED"
-            return self.celery_result_backend
+            backend_url = self.celery_result_backend
+            # Add ssl_cert_reqs parameter for rediss:// URLs if not present
+            if backend_url.startswith("rediss://"):
+                if "ssl_cert_reqs=" not in backend_url:
+                    separator = "&" if "?" in backend_url else "?"
+                    backend_url = f"{backend_url}{separator}ssl_cert_reqs=CERT_NONE"
+                print(f"Final Redis backend URL: {backend_url}")
+                return backend_url
+            return backend_url
         return f"redis://localhost:6379/0"
 
 # Global configuration
