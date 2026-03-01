@@ -31,4 +31,7 @@ dependencies = [
     "webvtt-py>=0.5.1",
     "whisperx>=3.7.4",
     "bcrypt==3.2.2",
+    "celery>=5.4.0",
+    "flower>=2.0.1",
+    "redis>=5.0.1",
 ]
