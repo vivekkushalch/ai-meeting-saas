@@ -3,6 +3,7 @@ Main Worker Application with Celery Integration
 Direct queue processing without FastAPI
 """
 
+import os
 import signal
 import sys
 from typing import List

@@ -7,7 +7,9 @@ sdk: docker
 python_version: '3.12'
 suggested_hardware: cpu-basic
 license: mit
+base_path: /
 app_file: app.py
+app_build_command: uv sync
 pinned: false
 ---
 

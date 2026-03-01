@@ -5,7 +5,8 @@ Configuration management for Worker Services
 import os
 from typing import List
 from enum import Enum
-from pydantic import BaseSettings, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 class ServiceMode(Enum):
     COMBINED = "combined"

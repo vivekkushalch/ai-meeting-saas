@@ -41,7 +41,7 @@ jobs:
           git config user.email "autodeploy@example.com"
           git checkout -b main
           git add .
-          git commit -m "Autodeploy: ${GITHUB_SHA}"
+          git commit -m "Autodeploy"
           
           # Use the token authentication format for Hugging Face
           git push --force "https://token:$HF_TOKEN@huggingface.co/spaces/$HF_REPO" main

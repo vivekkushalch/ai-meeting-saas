@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-# SERVICE_MODE can be: worker (default), beat, flower, combined, api
-MODE=${SERVICE_MODE:-worker}
+# SERVICE_MODE can be: worker, beat, flower, combined (default), api
+MODE=${SERVICE_MODE:-combined}
 
 echo "Starting AI Meeting Worker in mode: $MODE"
 

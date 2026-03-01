@@ -122,9 +122,9 @@ services:
       - rabbitmq
       - redis
       - minio
-    command: ["worker"]
+    command: ["combined"]
     environment:
-      SERVICE_MODE: worker
+      SERVICE_MODE: combined
       WORKER_ID: ${WORKER_ID:-worker-1}
       ENVIRONMENT: ${ENVIRONMENT:-production}
       DEBUG: ${DEBUG:-false}
