@@ -1,0 +1,48 @@
+name: Deploy Worker
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'worker/**'
+      - '.github/workflows/deploy-worker.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Necessary for git subtree/push
+
+      - name: Prepare Deployment Directory
+        run: |
+          # Create a temporary directory for the HF repo content
+          mkdir -p hf_deploy
+          
+          # Copy worker contents to the deployment directory
+          cp -r worker/* hf_deploy/
+          
+          # Ensure entrypoint.sh is executable
+          chmod +x hf_deploy/entrypoint.sh
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_REPO: ${{ secrets.HF_SPACE_ID }} # username/space-name
+          SERVICE_MODE: combined
+        run: |
+          cd hf_deploy
+          # We can inject HF specific environment variables into the Dockerfile if needed,
+          # but usually we set them in the Space settings.
+          
+          git init
+          git config user.name "autodeploy"
+          git config user.email "autodeploy@example.com"
+          git add .
+          git commit -m "Autodeploy"
+          
+          # Force push to the Hugging Face Space repository
+          # We use the token in the URL for authentication
+          git push --force "https://user:$HF_TOKEN@huggingface.co/spaces/$HF_REPO" master:main
